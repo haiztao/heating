@@ -1,0 +1,357 @@
+//
+//  AKAlertView.m
+//  AKAlertView
+//
+//  Created by AllenKwok on 15/10/16.
+//  Copyright © 2015年 xlink.cn. All rights reserved.
+//
+
+#import "AKAlertView.h"
+#import "AppDelegate.h"
+
+#define AlertPadding 10
+#define MenuHeight 45
+
+#define AlertHeight 250
+#define AlertWidth ([UIScreen mainScreen].bounds.size.width - 80)
+#define iconWH 60
+
+#define titleFont [UIFont systemFontOfSize:20]
+
+#define messageFont [UIFont systemFontOfSize:17]
+
+#define YColorRGB(r,g,b) [UIColor colorWithRed:r/255.0 green:g/255.0 blue:b/255.0 alpha:1]
+
+@implementation AKAlertViewItem
+
+@end
+
+@implementation AKAlertView{
+    UIView *_totalView;
+    AKAlertView *_topAlertView;
+}
+
+- (instancetype)initWithTitle:(NSString *)title
+                  withMessage:(NSString *)message{
+    self = [super init];
+    if (self) {
+        _items = [[NSMutableArray alloc] init];
+        _title  = title;
+        _message = message;
+        [self buildViews];
+    }
+    return self;
+}
+
+- (instancetype)initWithIconName:(NSString *)iconName withTitle:(NSString *)title withMessage:(NSString *)message{
+    self = [super init];
+    if (self) {
+        _items = [[NSMutableArray alloc] init];
+        _title  = title;
+        _message = message;
+        _iconImage = [UIImage imageNamed:iconName];
+        [self buildViews];
+    }
+    return self;
+}
+
+
+-(void)buildViews{
+    //遮盖层
+    self.frame = [self screenBounds];
+    
+    _coverView = [[UIView alloc]initWithFrame:[self topView].bounds];
+    _coverView.backgroundColor = [UIColor colorWithWhite:0 alpha:0];
+//    _coverView.alpha = 0;
+    _coverView.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
+    [self addSubview:_coverView];
+    
+    //对话框背景
+    _alertView = [[UIView alloc]initWithFrame:CGRectMake(0, 0, AlertWidth, AlertHeight)];
+    _alertView.center = CGPointMake(self.frame.size.width/2, self.frame.size.height/2);
+    _alertView.layer.cornerRadius = 10;
+    _alertView.layer.masksToBounds = YES;
+    _alertView.backgroundColor = YColorRGB(0x44, 0x4d, 0x51);
+    [self addSubview:_alertView];
+    
+    
+    CGFloat alertViewHeight = AlertPadding;
+    //图标
+    if (_iconImage) {
+        _iconView = [[UIImageView alloc]initWithFrame:CGRectMake((AlertWidth-iconWH)/2, AlertPadding, iconWH, iconWH)];
+        _iconView.image = _iconImage;
+        [_alertView addSubview:_iconView];
+        alertViewHeight+=iconWH+AlertPadding;
+    }
+    
+    //标题
+    if (_title.length) {
+        CGFloat labelHeight = [self heightWithString:_title font:titleFont width:AlertWidth-2*AlertPadding];
+        _labelTitle = [[UILabel alloc]initWithFrame:CGRectMake( AlertPadding,alertViewHeight, AlertWidth-2*AlertPadding, labelHeight)];
+        _labelTitle.font = titleFont;
+        _labelTitle.textColor = [UIColor whiteColor];
+        _labelTitle.textAlignment = NSTextAlignmentCenter;
+        _labelTitle.numberOfLines = 0;
+        _labelTitle.text = _title;
+        _labelTitle.lineBreakMode = NSLineBreakByCharWrapping;
+        [_alertView addSubview:_labelTitle];
+        
+        alertViewHeight+=labelHeight+AlertPadding;
+    }
+    
+    //消息
+    if (_message.length) {
+        CGFloat messageHeight = [self heightWithString:_message font:messageFont width:AlertWidth-2*AlertPadding];
+        _labelmessage =  [[UILabel alloc]initWithFrame:CGRectMake(AlertPadding, alertViewHeight, AlertWidth-2*AlertPadding, messageHeight)];
+        _labelmessage.font = messageFont;
+        _labelmessage.textColor = YColorRGB(0x91, 0xa0, 0xa7);
+        _labelmessage.textAlignment = NSTextAlignmentCenter;
+        _labelmessage.text = _message;
+        _labelmessage.numberOfLines = 0;
+        _labelmessage.lineBreakMode = NSLineBreakByCharWrapping;
+        [_alertView addSubview:_labelmessage];
+        alertViewHeight +=messageHeight+AlertPadding;
+    }
+    
+    _alertView.bounds = CGRectMake(_alertView.bounds.origin.x, _alertView.bounds.origin.y, AlertWidth, alertViewHeight+MenuHeight);
+    
+    _contentScrollView = [[UIScrollView alloc]initWithFrame:CGRectZero];
+    
+    [_alertView addSubview:_contentScrollView];
+
+    [[UIDevice currentDevice] beginGeneratingDeviceOrientationNotifications];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(deviceOrientationDidChange:) name:UIDeviceOrientationDidChangeNotification object:nil];
+    
+}
+
+- (void)dealloc
+{
+    [[UIDevice currentDevice] endGeneratingDeviceOrientationNotifications];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:UIDeviceOrientationDidChangeNotification object:nil];
+}
+
+-(void)layoutSubviews{
+    _buttonScrollView.frame = CGRectMake(0, _alertView.frame.size.height-MenuHeight,_alertView.frame.size.width, MenuHeight);
+    _contentScrollView.frame = CGRectMake(0, _labelTitle.frame.origin.y+_labelTitle.frame.size.height, _alertView.frame.size.width, _alertView.frame.size.height-MenuHeight);
+    self.contentView.frame = CGRectMake(0,0,self.contentView.frame.size.width, self.contentView.frame.size.height);
+    _contentScrollView.contentSize = self.contentView.frame.size;
+    
+}
+
+-(void)willMoveToSuperview:(UIView *)newSuperview
+{
+    [self addButtonItem];
+    [_contentScrollView addSubview:self.contentView];
+    [self reLayout];
+}
+
+-(void)reLayout{
+    CGFloat plus;
+    if (self.contentView) {
+        plus = self.contentView.frame.size.height-(_alertView.frame.size.height-MenuHeight);
+    }else{
+        plus = _labelmessage.frame.origin.y+_labelmessage.frame.size.height -(_alertView.frame.size.height-MenuHeight);
+    }
+    plus = MAX(0, plus);
+    CGFloat height =  MIN([self screenBounds].size.height-MenuHeight,_alertView.frame.size.height+plus);
+    
+    _alertView.frame = CGRectMake(_alertView.frame.origin.x, _alertView.frame.origin.y, AlertWidth, height);
+    _alertView.center = self.center;
+    [self setNeedsDisplay];
+    [self setNeedsLayout];
+}
+
+- (CGFloat)heightWithString:(NSString*)string font:(UIFont *)font width:(CGFloat)width
+{
+    NSDictionary *attrs = @{NSFontAttributeName:font};
+    return  [string boundingRectWithSize:CGSizeMake(width, 0) options:NSStringDrawingTruncatesLastVisibleLine | NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading attributes:attrs context:nil].size.height;
+}
+
+#pragma mark - add item
+- (NSInteger)addButtonWithTitle:(NSString *)title{
+    AKAlertViewItem *item = [[AKAlertViewItem alloc] init];
+    item.title = title;
+    item.action =  ^(AKAlertViewItem *item) {
+        NSLog(@"no action");
+    };
+    item.type = ButtonTypeOK;
+    [_items addObject:item];
+    return [_items indexOfObject:title];
+}
+- (void)addButton:(ButtonType)type withTitle:(NSString *)title handler:(AKAlertViewHandler)handler{
+    AKAlertViewItem *item = [[AKAlertViewItem alloc] init];
+    item.title = title;
+    item.action = handler;
+    item.type = type;
+    [_items addObject:item];
+    item.tag = [_items indexOfObject:item];
+}
+- (void)addButtonItem {
+    _buttonScrollView = [[UIScrollView alloc]initWithFrame:CGRectMake(0, _alertView.frame.size.height- MenuHeight,AlertWidth, MenuHeight)];
+    _buttonScrollView.bounces = NO;
+    _buttonScrollView.showsHorizontalScrollIndicator = NO;
+    _buttonScrollView.showsVerticalScrollIndicator =  NO;
+    CGFloat  width;
+    if(self.buttonWidth){
+        width = self.buttonWidth;
+        _buttonScrollView.contentSize = CGSizeMake(width*[_items count], MenuHeight);
+    }else
+    {
+        width = _alertView.frame.size.width/[_items count];
+    }
+    [_items enumerateObjectsUsingBlock:^(AKAlertViewItem *item, NSUInteger idx, BOOL *stop) {
+        UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
+        //        button.translatesAutoresizingMaskIntoConstraints = NO;
+        button.frame = CGRectMake(idx*width, 1, width, MenuHeight);
+        //seperator
+        button.backgroundColor = YColorRGB(0x44, 0x4d, 0x51);
+        button.layer.shadowColor = YColorRGB(0x2a, 0x30, 0x33).CGColor;
+        button.layer.shadowRadius = 0.5;
+        button.layer.shadowOpacity = 1;
+        button.layer.shadowOffset = CGSizeZero;
+        button.layer.masksToBounds = NO;
+        button.tag = 90000 + idx;
+        // title
+        [button setTitle:item.title forState:UIControlStateNormal];
+        [button setTitle:item.title forState:UIControlStateSelected];
+        button.titleLabel.font = [UIFont boldSystemFontOfSize:button.titleLabel.font.pointSize];
+        if (item.type==ButtonTypeOK) {
+            [button setTitleColor:YColorRGB(0xff, 0xb4, 0x00) forState:UIControlStateNormal];
+        }else if (item.type==ButtonTypeCancel){
+            [button setTitleColor:YColorRGB(0xff, 0xb4, 0x00) forState:UIControlStateNormal];
+        }else{
+            [button setTitleColor:YColorRGB(0xff, 0xb4, 0x00) forState:UIControlStateNormal];
+        }
+        // action
+        [button addTarget:self
+                   action:@selector(buttonTouched:)
+         forControlEvents:UIControlEventTouchUpInside];
+        
+        [_buttonScrollView addSubview:button];
+    }];
+    [_alertView addSubview:_buttonScrollView];
+    
+}
+
+- (void)buttonTouched:(UIButton*)button{
+    AKAlertViewItem *item = _items[button.tag-90000];
+    
+    [self dismiss];
+    
+    if (item.action) {
+        item.action(item);
+    }
+}
+
+#pragma mark - show and dismiss
+- (UIView*)topView{
+    
+    AppDelegate *app = (AppDelegate *)[UIApplication sharedApplication].delegate;
+    return  app.window;
+}
+- (void)show {
+    [UIView animateWithDuration:0.3 animations:^{
+        _coverView.backgroundColor = [UIColor colorWithWhite:0 alpha:0.5];
+    } completion:^(BOOL finished) {
+        
+    }];
+    UIView *topView = [self topView];
+    if (topView.subviews.count) {
+        for (int i = (int)topView.subviews.count-1; i>=0; i--) {
+            UIView *view = topView.subviews[i];
+            if ([view isKindOfClass:[self class]]) {
+                _topAlertView = (AKAlertView *)view;
+                _topAlertView.hidden = YES;
+//                _topAlertView->_coverView.alpha = 0;
+                break;
+            }
+        }
+    }
+    [[self topView] addSubview:self];
+    [self showAnimation];
+    if (self.isRotate) {
+        [self showIconViewRotate];
+    }
+}
+
+- (void)dismiss {
+    [self hideAnimation];
+    if (_topAlertView) {
+        _topAlertView.hidden = NO;
+        _topAlertView = nil;
+    }
+}
+
+- (void)animationDidStop:(CAAnimation *)anim finished:(BOOL)flag {
+    //    [self removeFromSuperview];
+}
+
+- (void)showAnimation {
+    CAKeyframeAnimation *popAnimation = [CAKeyframeAnimation animationWithKeyPath:@"transform"];
+    popAnimation.duration = 0.2;
+    popAnimation.values = @[[NSValue valueWithCATransform3D:CATransform3DMakeScale(1.2f, 1.2f, 1.0f)],
+
+                            [NSValue valueWithCATransform3D:CATransform3DIdentity]];
+    popAnimation.keyTimes = @[@0.0f,@1.0f];
+    
+    popAnimation.timingFunctions = @[[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut],
+                                     [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut],
+                                     [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]];
+    [_alertView.layer addAnimation:popAnimation forKey:nil];
+}
+
+- (void)showIconViewRotate{
+    CABasicAnimation* rotationAnimation;
+    
+    rotationAnimation = [CABasicAnimation animationWithKeyPath:@"transform.rotation.z"];
+    rotationAnimation.toValue = [NSNumber numberWithFloat: M_PI * 2.0 ];
+    rotationAnimation.duration = 2.f;
+    rotationAnimation.cumulative = YES;
+    rotationAnimation.repeatCount = MAXFLOAT;
+    
+    [_iconView.layer addAnimation:rotationAnimation forKey:@"rotationAnimation"];
+}
+
+- (void)hideAnimation{
+    [UIView animateWithDuration:0.4 animations:^{
+        _coverView.alpha = 0.0;
+        _alertView.alpha = 0.0;
+    } completion:^(BOOL finished) {
+        [self removeFromSuperview];
+    }];
+}
+
+#pragma mark - Handle device orientation changes
+// Handle device orientation changes
+- (void)deviceOrientationDidChange: (NSNotification *)notification
+{
+    //    UIInterfaceOrientation interfaceOrientation = [[UIApplication sharedApplication] statusBarOrientation];
+    self.frame = [self screenBounds];
+    //NSLog(@"self.frame%@",NSStringFromCGRect(self.frame));
+    [UIView animateWithDuration:0.2f delay:0.0 options:UIViewAnimationOptionTransitionNone
+                     animations:^{
+                         [self reLayout];
+                     }
+                     completion:nil
+     ];
+}
+
+- (CGRect)screenBounds
+{
+    CGFloat screenWidth = [UIScreen mainScreen].bounds.size.width;
+    CGFloat screenHeight = [UIScreen mainScreen].bounds.size.height;
+    
+    // On iOS7, screen width and height doesn't automatically follow orientation
+    if (floor(NSFoundationVersionNumber) <= NSFoundationVersionNumber_iOS_7_1) {
+        UIInterfaceOrientation interfaceOrientation = [[UIApplication sharedApplication] statusBarOrientation];
+        if (UIInterfaceOrientationIsLandscape(interfaceOrientation)) {
+            CGFloat tmp = screenWidth;
+            screenWidth = screenHeight;
+            screenHeight = tmp;
+        }
+    }
+    
+    return CGRectMake(0, 0, screenWidth, screenHeight);
+}
+
+@end

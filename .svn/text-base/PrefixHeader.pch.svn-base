@@ -1,0 +1,77 @@
+//
+//  PrefixHeader.pch
+//  heating
+//
+//  Created by haitao on 2017/2/6.
+//  Copyright © 2017年 haitao. All rights reserved.
+//
+
+#ifndef PrefixHeader_pch
+#define PrefixHeader_pch
+
+//产品id
+#define HeatingPID @"160fa2b091ef0a00160fa2b091ef0a01"
+#define OTSProduID @"160fa2b091ef0a00160fa2b091ef0a01"
+
+#define MainWidth [UIScreen mainScreen].bounds.size.width
+#define MainHeight [UIScreen mainScreen].bounds.size.height
+
+#define isAutoLogin @"isAutoLogin"
+#define LastLoginAccount @"lastLoginAccount"
+#define LastLoginPwd @"lastLoginPwd"
+
+#define UserList @"userList"
+
+//调试代码
+#ifdef DEBUG //-->调试宏 调试模式(Debug)下系统会自动定义，在上线、发布(release)模式 不会定义
+//定义一个变参宏  __VA_ARGS__可以接受变参宏的参数
+#define NSLog(...) NSLog(__VA_ARGS__)
+#else
+#define NSLog(...)
+#endif
+
+//国际化语言
+#define LocalizedString(str) NSLocalizedString(str,nil)
+
+#define JYTabbarBageKey                     @"JYTabbarBageKey"//消息红色小圆点
+
+
+#define MainYellowColor [UIColor colorWithRed:253/255.0 green:179/255.0 blue:43/255.0 alpha:1]
+#define MainGrayColor [UIColor colorWithRed:0xbf/255.0 green:0xbf/255.0 blue:0xbf/255.0 alpha:1]
+
+#define YColorRGB(r,g,b) [UIColor colorWithRed:r/255.0 green:g/255.0 blue:b/255.0 alpha:1]
+#define HTColorRGB(r,g,b,alpha) [UIColor colorWithRed:r/255.0 green:g/255.0 blue:b/255.0 alpha:alpha]
+
+//http 
+#import "HttpRequest.h"
+#import "MBProgressHUD.h"
+#import "NSTools.h"
+
+//通知
+#import "Notification.h"
+//tool
+#import "UIview+Extension.h"
+#import "DataSource.h"
+#import "UIColor+HEX.h"
+#import "UIImage+Extension.h"
+#import "UIButton+Extension.h"
+#import "NSString+Extension.h"
+#import "NSDate+Extension.h"
+//alert
+#import "AKAlertView.h"
+
+
+//rootView
+#import "DeviceListViewController.h"
+#import "YSHYSlideViewController.h"
+
+//model
+#import "DeviceEntity.h"
+#import "DataSource.h"
+#import "DeviceModel.h"
+#import "DataManage.h"
+
+
+
+
+#endif /* PrefixHeader_pch */
